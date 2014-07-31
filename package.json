@@ -23,7 +23,10 @@
     "opn": "^0.1.2",
     "psi": "^0.1.1",
     "require-dir": "^0.1.0",
-    "run-sequence": "^0.3.6"
+    "run-sequence": "^0.3.6",
+    "vinyl-source-stream": "^0.1.1",
+    "watchify": "^1.0.1",
+    "browserify": "^5.9.1"
   },
   "engines": {
     "node": ">=0.10.0"

@@ -27,6 +27,9 @@ var runSequence = require('run-sequence');
 var browserSync = require('browser-sync');
 var pagespeed = require('psi');
 var reload = browserSync.reload;
+var source = require('vinyl-source-stream');
+var browserify = require('browserify');
+var watchify = require('watchify');
 
 var AUTOPREFIXER_BROWSERS = [
   'ie >= 10',
@@ -40,10 +43,36 @@ var AUTOPREFIXER_BROWSERS = [
   'bb >= 10'
 ];
 
+// Watchify js
+var dist = false; // set to true when `default` task is run
+gulp.task('watchify', function() {
+  var bundler = watchify(browserify('./app/scripts/app.js', {
+    cache: {},
+    packageCache: {},
+    fullPaths: true,
+    debug: true
+  }));
+  var bundle = function() {
+    return bundler
+      .bundle()
+      .on('error', function(e) {
+        console.log('Watchify Error', e);
+      })
+      .pipe(source('bundle.js'))
+      // destination changes when `dist` is set to true
+      .pipe(gulp.dest( dist ? 'dist/scripts' : './app/scripts/' ))
+      .pipe(reload({stream: true, once: true}));
+  };
+  // rebundle on change
+  bundler.on('update', bundle);
+  return bundle();
+});
+
 // Lint JavaScript
 gulp.task('jshint', function () {
   return gulp.src('app/scripts/**/*.js')
-    .pipe(reload({stream: true, once: true}))
+    // 'watchify' now handles reloading
+    // .pipe(reload({stream: true, once: true}))
     .pipe($.jshint())
     .pipe($.jshint.reporter('jshint-stylish'))
     .pipe($.if(!browserSync.active, $.jshint.reporter('fail')));
@@ -151,7 +180,7 @@ gulp.task('html', function () {
 gulp.task('clean', del.bind(null, ['.tmp', 'dist']));
 
 // Watch Files For Changes & Reload
-gulp.task('serve', ['styles:components', 'styles:scss'], function () {
+gulp.task('serve', ['watchify', 'styles:components', 'styles:scss'], function () {
   browserSync({
     notify: false,
     // Run as an https by uncommenting 'https: true'
@@ -187,7 +216,8 @@ gulp.task('serve:dist', ['default'], function () {
 
 // Build Production Files, the Default Task
 gulp.task('default', ['clean'], function (cb) {
-  runSequence('styles', ['jshint', 'html', 'images', 'fonts', 'copy'], cb);
+  dist = true; // change Watchify's build destination
+  runSequence('styles', ['jshint', 'watchify', 'html', 'images', 'fonts', 'copy'], cb);
 });
 
 // Run PageSpeed Insights
